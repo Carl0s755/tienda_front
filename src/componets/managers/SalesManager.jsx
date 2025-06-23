@@ -2,16 +2,16 @@ import React, { useEffect, useState } from 'react';
 import api from '../../services/axios/axios';
 import useModal from '../../hooks/useModal';
 import Modal from '../UI/Modal';
-import Grid from '../UI/Grid';
-import SaleForm from '../forms/SalesForm';
+import Grid from "../UI/Grid";
 import Swal from 'sweetalert2';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import SaleForm from "../forms/SalesForm";
 
 const SaleManager = () => {
     const [sales, setSales] = useState([]);
+    const [clients, setClients] = useState([]);
     const { isOpen, open, close } = useModal();
     const [selectedSale, setSelectedSale] = useState(null);
-    const [saleDetails, setSaleDetails] = useState([]);
 
     const loadSales = () => {
         api.get('/sales')
@@ -19,72 +19,102 @@ const SaleManager = () => {
             .catch(err => console.error(err));
     };
 
-    const loadSaleById = async (id) => {
-        try {
-            const [saleRes, detailRes] = await Promise.all([
-                api.get(`/sales/${id}`),
-                api.get(`/sale-details/${id}`)
-            ]);
-
-            setSelectedSale(saleRes.data.data || null);
-            setSaleDetails(detailRes.data.data || []);
-            open();
-        } catch (err) {
-            console.error('Error al cargar venta o detalles', err);
-        }
+    const loadClients = () => {
+        api.get('/drops')
+            .then(res => setClients(res.data.data || []))
+            .catch(err => console.error('Error cargando clientes:', err));
     };
 
     const handleCreate = () => {
         setSelectedSale(null);
-        setSaleDetails([]);
         open();
     };
 
     const handleEdit = (sale) => {
-        if (sale?.id_venta) {
-            loadSaleById(sale.id_venta);
-        }
+        setSelectedSale(sale);
+        open();
     };
 
     const handleDelete = (sale) => {
         Swal.fire({
-            title: `¿Eliminar venta ID ${sale.id_venta}?`,
-            text: 'Esta acción no se puede deshacer.',
+            title: `¿Eliminar venta #${sale.Id_Venta}?`,
+            text: "Esta acción no se puede deshacer.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#6b7280',
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar'
-        }).then(result => {
+        }).then((result) => {
             if (result.isConfirmed) {
-                api.delete(`/sales/${sale.id_venta}`)
+                api.delete(`/sales/${sale.Id_Venta}`)
                     .then(() => {
                         loadSales();
                         Swal.fire('Eliminado', 'La venta ha sido eliminada.', 'success');
                     })
-                    .catch(() => {
+                    .catch((err) => {
+                        console.error(err);
                         Swal.fire('Error', 'No se pudo eliminar la venta.', 'error');
                     });
             }
         });
     };
 
-    const handleSave = () => {
-        close();
-        loadSales();
+    const handleSaveSale = (data) => {
+        const saleId = selectedSale?.Id_Venta;
+        const endpoint = saleId ? `/sales/${parseInt(saleId)}` : '/sales';
+        const method = saleId ? api.put : api.post;
+
+        const mappedData = {
+            Id_Venta: parseInt(data.Id_Venta || 0),
+            Id_Cliente: data.Id_Cliente ? parseInt(data.Id_Cliente) : null,
+            total_venta: parseFloat(data.total_venta),
+            fecha_venta: data.fecha_venta,
+            metodo_pago: data.metodo_pago || null
+        };
+
+        if (!mappedData.Id_Cliente) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cliente requerido',
+                text: 'Debes seleccionar un cliente antes de guardar la venta.'
+            });
+            return;
+        }
+
+        method(endpoint, mappedData)
+            .then(() => {
+                close();
+                loadSales();
+                Swal.fire({
+                    icon: 'success',
+                    title: saleId ? 'Venta actualizada' : 'Venta registrada',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            })
+            .catch((err) => {
+                console.error(err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo guardar la venta.'
+                });
+            });
     };
+
+
+
 
     useEffect(() => {
         loadSales();
+        loadClients();
     }, []);
 
     const columns = [
-        { key: 'id_venta', label: 'ID Venta' },
         { key: 'fecha_venta', label: 'Fecha' },
-        { key: 'id_cliente', label: 'ID Cliente' },
-        { key: 'total_venta', label: 'Total' },
-        { key: 'metodo_pago', label: 'Método de Pago' }
+        { key: 'metodo_pago', label: 'Metodo de pago' },
+        { key: 'total_venta', label: 'Total' }
     ];
 
     const actions = [
@@ -115,10 +145,10 @@ const SaleManager = () => {
         <div style={outerContainerStyle}>
             <div style={innerContainerStyle}>
                 <div style={headerStyle}>
-                    <h1 style={titleStyle}>Ventas</h1>
+                    <h1 style={titleStyle}>Registro de Ventas</h1>
                     <button onClick={handleCreate} style={buttonStyle}>
                         <FaPlus style={{ marginRight: '0.5rem' }} />
-                        Agregar Venta
+                        Nueva Venta
                     </button>
                 </div>
                 <div style={gridWrapperStyle}>
@@ -133,9 +163,9 @@ const SaleManager = () => {
             >
                 <SaleForm
                     sale={selectedSale}
-                    details={saleDetails}
                     onCancel={close}
-                    onSave={handleSave}
+                    onSubmit={handleSaveSale}
+                    clients={clients}
                 />
             </Modal>
         </div>

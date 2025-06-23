@@ -24,7 +24,13 @@ const ClientManager = () => {
     };
 
     const handleEdit = (client) => {
-        setSelectedClient(client);
+        const mappedClient = {
+            id_cliente: client.ID_CLIENTE,
+            nombre: client.NOMBRE,
+            email: client.EMAIL,
+            telefono: client.TELEFONO
+        };
+        setSelectedClient(mappedClient);
         open();
     };
 
@@ -54,11 +60,18 @@ const ClientManager = () => {
     };
 
     const handleSaveClient = (data) => {
-        const clientId = selectedClient?.Id_Cliente;
-        const endpoint = clientId ? `/clients/${clientId}` : '/clients';
-        const method = clientId ? api.put : api.post;
+        const clientId = data.id_cliente;
+        const endpoint = clientId && clientId !== 0 ? `/clients/${clientId}` : '/clients';
+        const method = clientId && clientId !== 0 ? api.put : api.post;
 
-        method(endpoint, data)
+        const payload = {
+            Id_Cliente: data.id_cliente,
+            nombre: data.nombre,
+            email: data.email,
+            telefono: data.telefono
+        };
+
+        method(endpoint, payload)
             .then(() => {
                 close();
                 loadClients();
@@ -85,8 +98,8 @@ const ClientManager = () => {
 
     const columns = [
         { key: 'nombre', label: 'Nombre' },
-        { key: 'email', label: 'Email' },
-        { key: 'telefono', label: 'Telefono' },
+        { key: 'email', label: 'Correo' },
+        { key: 'telefono', label: 'Teléfono' }
     ];
 
     const actions = [
@@ -118,7 +131,10 @@ const ClientManager = () => {
             <div style={innerContainerStyle}>
                 <div style={headerStyle}>
                     <h1 style={titleStyle}>Catálogo de Clientes</h1>
-                    <button onClick={handleCreate} style={buttonStyle}>
+                    <button
+                        onClick={handleCreate}
+                        style={buttonStyle}
+                    >
                         <FaPlus style={{ marginRight: '0.5rem' }} />
                         Agregar Cliente
                     </button>
