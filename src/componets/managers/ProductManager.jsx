@@ -17,7 +17,6 @@ const ProductManager = () => {
         api.get('/products')
             .then(res => {
                 const rawProducts = res.data.data || [];
-                // Reemplazamos Id_Proveedor por el nombre
                 const mapped = rawProducts.map(product => ({
                     ...product,
                     proveedorNombre: proveedores.find(p => p.ID_PROVEEDOR === product.Id_Proveedor)?.NOMBRE || `#${product.Id_Proveedor}`
@@ -76,8 +75,16 @@ const ProductManager = () => {
         const endpoint = productId ? `/products/${productId}` : '/products';
         const method = productId ? api.put : api.post;
 
+        const formatDate = (date) => {
+            if (!date) return null;
+            const d = new Date(date);
+            if (isNaN(d)) return null;
+            return d.toISOString().split('T')[0];
+        };
+
         const payload = {
             ...data,
+            fecha_caducidad: formatDate(data.fecha_caducidad),
             Id_Producto: productId ?? 0
         };
 
