@@ -5,7 +5,7 @@ import * as Yup from 'yup';
 const ProviderForm = ({ provider = null, onSubmit, onCancel }) => {
     const formik = useFormik({
         initialValues: {
-            Id_Proveedor: provider?.Id_Proveedor || 0,
+            idProveedor: provider?.idProveedor ?? null,
             nombre: provider?.nombre || '',
             telefono: provider?.telefono || '',
             contacto: provider?.contacto || ''
@@ -15,8 +15,12 @@ const ProviderForm = ({ provider = null, onSubmit, onCancel }) => {
             telefono: Yup.string().required('El teléfono es obligatorio'),
             contacto: Yup.string().required('El nombre del contacto es obligatorio')
         }),
-        onSubmit: onSubmit,
-        enableReinitialize: true
+        enableReinitialize: true,
+        onSubmit: (values) => {
+            const payload = { ...values };
+            if (!payload.idProveedor) delete payload.idProveedor;
+            onSubmit(payload);
+        }
     });
 
     const fields = [
@@ -27,7 +31,11 @@ const ProviderForm = ({ provider = null, onSubmit, onCancel }) => {
 
     return (
         <form onSubmit={formik.handleSubmit} style={formStyle}>
-            <input type="hidden" name="Id_Proveedor" value={formik.values.Id_Proveedor || ''} />
+            {/* Campo oculto solo si hay id */}
+            {formik.values.idProveedor && (
+                <input type="hidden" name="idProveedor" value={formik.values.idProveedor} />
+            )}
+
             {fields.map(({ name, label }) => (
                 <div style={fieldGroup} key={name}>
                     <label style={labelStyle}>{label}</label>

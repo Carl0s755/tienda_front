@@ -15,13 +15,24 @@ const ProductManager = () => {
 
     const loadProducts = () => {
         api.get('/products')
-            .then(res => setProducts(res.data.data || []))
+            .then(res => {
+                const rawProducts = res.data.data || [];
+                // Reemplazamos Id_Proveedor por el nombre
+                const mapped = rawProducts.map(product => ({
+                    ...product,
+                    proveedorNombre: proveedores.find(p => p.ID_PROVEEDOR === product.Id_Proveedor)?.NOMBRE || `#${product.Id_Proveedor}`
+                }));
+                setProducts(mapped);
+            })
             .catch(err => console.error(err));
     };
 
     const loadProveedores = () => {
-        api.get('/providers/list')
-            .then(res => setProveedores(res.data.data || []))
+        api.get('/drops/providers')
+            .then(res => {
+                const list = res.data.data || [];
+                setProveedores(list);
+            })
             .catch(err => console.error('Error cargando proveedores:', err));
     };
 
@@ -62,10 +73,15 @@ const ProductManager = () => {
 
     const handleSaveProduct = (data) => {
         const productId = selectedProduct?.Id_Producto;
-        const endpoint = productId ? `/products/${parseInt(productId)}` : '/products';
+        const endpoint = productId ? `/products/${productId}` : '/products';
         const method = productId ? api.put : api.post;
 
-        method(endpoint, data)
+        const payload = {
+            ...data,
+            Id_Producto: productId ?? 0
+        };
+
+        method(endpoint, payload)
             .then(() => {
                 close();
                 loadProducts();
@@ -87,9 +103,12 @@ const ProductManager = () => {
     };
 
     useEffect(() => {
-        loadProducts();
         loadProveedores();
     }, []);
+
+    useEffect(() => {
+        if (proveedores.length > 0) loadProducts();
+    }, [proveedores]);
 
     const columns = [
         { key: 'nombre', label: 'Nombre' },
@@ -97,7 +116,6 @@ const ProductManager = () => {
         { key: 'precio_unitario', label: 'Precio Unitario' },
         { key: 'stock', label: 'Stock' },
         { key: 'fecha_caducidad', label: 'Fecha de Caducidad' },
-        { key: 'Id_Proveedor', label: 'Proveedor' }
     ];
 
     const actions = [
@@ -157,6 +175,7 @@ const ProductManager = () => {
         </div>
     );
 };
+
 
 const outerContainerStyle = {
     backgroundColor: '#f9fafb',

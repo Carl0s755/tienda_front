@@ -4,12 +4,14 @@ import useModal from '../../hooks/useModal';
 import Modal from '../UI/Modal';
 import Grid from "../UI/Grid";
 import Swal from 'sweetalert2';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaFilePdf } from 'react-icons/fa';
+import jsPDF from 'jspdf';
 import SaleForm from "../forms/SalesForm";
 
 const SaleManager = () => {
     const [sales, setSales] = useState([]);
     const [clients, setClients] = useState([]);
+    const [products, setProducts] = useState([]);
     const { isOpen, open, close } = useModal();
     const [selectedSale, setSelectedSale] = useState(null);
 
@@ -20,18 +22,19 @@ const SaleManager = () => {
     };
 
     const loadClients = () => {
-        api.get('/drops')
+        api.get('/drops/clients')
             .then(res => setClients(res.data.data || []))
             .catch(err => console.error('Error cargando clientes:', err));
     };
 
-    const handleCreate = () => {
-        setSelectedSale(null);
-        open();
+    const loadProducts = () => {
+        api.get('/drops/products')
+            .then(res => setProducts(res.data.data || []))
+            .catch(err => console.error('Error cargando productos:', err));
     };
 
-    const handleEdit = (sale) => {
-        setSelectedSale(sale);
+    const handleCreate = () => {
+        setSelectedSale(null);
         open();
     };
 
@@ -60,17 +63,75 @@ const SaleManager = () => {
         });
     };
 
+    const handleGenerateTicket = (sale) => {
+        api.get(`/sales-ticket/${sale.Id_Venta}`)
+            .then(res => {
+                const venta = res.data.data.venta;
+                const detalles = res.data.data.detalles;
+
+                const doc = new jsPDF({
+                    unit: 'mm',
+                    format: [80, 150],
+                });
+
+                let y = 10;
+
+                doc.setFontSize(12);
+                doc.setFont('courier', 'normal');
+                doc.text("Tienda La Moderna", 40, y, { align: 'center' });
+                y += 6;
+
+                doc.setFontSize(10);
+                doc.text("------------------------------", 40, y, { align: 'center' });
+                y += 5;
+
+                doc.text(`Venta: ${venta.ID_VENTA}`, 10, y); y += 5;
+                doc.text(`Fecha: ${venta.FECHA}`, 10, y); y += 5;
+                doc.text(`Cliente: ${venta.CLIENTE}`, 10, y); y += 5;
+                doc.text(`Pago: ${venta.METODO_PAGO}`, 10, y); y += 6;
+
+                doc.text("PRODUCTOS", 40, y, { align: 'center' }); y += 5;
+                doc.text("------------------------------", 40, y, { align: 'center' }); y += 5;
+
+                detalles.forEach((p, i) => {
+                    doc.text(`${p.PRODUCTO}`, 10, y); y += 4;
+                    doc.text(`  ${p.CANTIDAD} x $${p.PRECIO_UNITARIO} = $${p.SUBTOTAL}`, 10, y); y += 5;
+                });
+
+                doc.text("------------------------------", 40, y, { align: 'center' }); y += 6;
+                doc.setFontSize(11);
+                doc.text(`TOTAL: $${venta.TOTAL_VENTA}`, 10, y); y += 6;
+
+                doc.setFontSize(9);
+                doc.text("Gracias por su compra", 40, y, { align: 'center' }); y += 5;
+                doc.text("Tienda La Moderna", 40, y, { align: 'center' });
+
+                doc.save(`ticket_venta_${venta.ID_VENTA}.pdf`);
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire('Error', 'No se pudo generar el ticket.', 'error');
+            });
+    };
+
+
+
     const handleSaveSale = (data) => {
         const saleId = selectedSale?.Id_Venta;
         const endpoint = saleId ? `/sales/${parseInt(saleId)}` : '/sales';
         const method = saleId ? api.put : api.post;
 
         const mappedData = {
-            Id_Venta: parseInt(data.Id_Venta || 0),
-            Id_Cliente: data.Id_Cliente ? parseInt(data.Id_Cliente) : null,
-            total_venta: parseFloat(data.total_venta),
+            Id_Cliente: data.Id_Cliente && !isNaN(parseInt(data.Id_Cliente))
+                ? parseInt(data.Id_Cliente)
+                : null,
             fecha_venta: data.fecha_venta,
-            metodo_pago: data.metodo_pago || null
+            metodo_pago: data.metodo_pago || null,
+            detalles: (data.detalles || []).map(det => ({
+                id_producto: parseInt(det.id_producto),
+                cantidad: parseFloat(det.cantidad),
+                precio_unitario: parseFloat(det.precio_unitario)
+            }))
         };
 
         if (!mappedData.Id_Cliente) {
@@ -78,6 +139,15 @@ const SaleManager = () => {
                 icon: 'warning',
                 title: 'Cliente requerido',
                 text: 'Debes seleccionar un cliente antes de guardar la venta.'
+            });
+            return;
+        }
+
+        if (!mappedData.detalles.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sin productos',
+                text: 'Agrega al menos un producto a la venta.'
             });
             return;
         }
@@ -92,6 +162,7 @@ const SaleManager = () => {
                     showConfirmButton: false,
                     timer: 1500
                 });
+                window.dispatchEvent(new Event('venta-registrada'));
             })
             .catch((err) => {
                 console.error(err);
@@ -103,12 +174,10 @@ const SaleManager = () => {
             });
     };
 
-
-
-
     useEffect(() => {
         loadSales();
         loadClients();
+        loadProducts();
     }, []);
 
     const columns = [
@@ -119,12 +188,12 @@ const SaleManager = () => {
 
     const actions = [
         {
-            label: <FaEdit />,
-            title: 'Editar',
-            onClick: handleEdit,
+            label: <FaFilePdf />,
+            title: 'Generar ticket',
+            onClick: handleGenerateTicket,
             style: {
                 fontSize: '1rem',
-                color: '#2563eb',
+                color: '#059669',
                 cursor: 'pointer',
                 marginRight: '0.5rem'
             }
@@ -166,6 +235,7 @@ const SaleManager = () => {
                     onCancel={close}
                     onSubmit={handleSaveSale}
                     clients={clients}
+                    products={products}
                 />
             </Modal>
         </div>

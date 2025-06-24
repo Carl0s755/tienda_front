@@ -2,23 +2,31 @@ import React from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 
+const convertToISO = (dateString) => {
+    const parts = dateString.split('/');
+    if (parts.length !== 3) return '';
+    const [day, month, year] = parts;
+    const fullYear = year.length === 2 ? '20' + year : year;
+    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+};
+
 const ProductForm = ({ product = null, onSubmit, onCancel, proveedores = [] }) => {
     const formik = useFormik({
         initialValues: {
-            Id_Producto : product.Id_Producto || 0,
+            Id_Producto : product?.Id_Producto || 0,
             nombre: product?.nombre || '',
             descripcion: product?.descripcion || '',
             precio_unitario: product?.precio_unitario || '',
             stock: product?.stock || '',
-            fecha_caducidad: product?.fecha_caducidad || '',
-            id_proveedor: product?.id_proveedor || ''
+            fecha_caducidad: product?.fecha_caducidad ? convertToISO(product.fecha_caducidad) : '',
+            id_proveedor: product?.Id_Proveedor || ''
         },
         validationSchema: Yup.object({
             nombre: Yup.string().required('El nombre es obligatorio'),
             descripcion: Yup.string().required('La descripción es obligatoria'),
             precio_unitario: Yup.number().typeError('Debe ser un número').required('El precio es obligatorio'),
             stock: Yup.number().integer('Debe ser un número entero').required('El stock es obligatorio'),
-            fecha_caducidad: Yup.date().required('La fecha es obligatoria'),
+            fecha_caducidad: Yup.date(),
             id_proveedor: Yup.number().typeError('Selecciona un proveedor').required('El proveedor es obligatorio')
         }),
         onSubmit: (values) => {
@@ -27,12 +35,11 @@ const ProductForm = ({ product = null, onSubmit, onCancel, proveedores = [] }) =
                 precio_unitario: parseFloat(values.precio_unitario),
                 stock: parseInt(values.stock, 10),
                 id_proveedor: parseInt(values.id_proveedor, 10),
-                fecha_caducidad: new Date(values.fecha_caducidad).toISOString().split('T')[0] // ← aquí se asegura el formato YYYY-MM-DD
+                fecha_caducidad: values.fecha_caducidad
             };
-
             onSubmit(payload);
-        }
-
+        },
+        enableReinitialize: true
     });
 
     return (

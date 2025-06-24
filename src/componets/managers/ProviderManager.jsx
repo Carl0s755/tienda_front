@@ -12,9 +12,17 @@ const ProviderManager = () => {
     const { isOpen, open, close } = useModal();
     const [selectedProvider, setSelectedProvider] = useState(null);
 
+    const mapProvider = (p) => ({
+        idProveedor: p.Id_Proveedor,
+        nombre: p.nombre,
+        contacto: p.contacto,
+        telefono: p.telefono
+    });
+
+
     const loadProviders = () => {
         api.get('/providers')
-            .then(res => setProviders(res.data.data || []))
+            .then(res => setProviders((res.data.data || []).map(mapProvider)))
             .catch(err => console.error(err));
     };
 
@@ -40,7 +48,7 @@ const ProviderManager = () => {
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                api.delete(`/providers/${provider.Id_Proveedor}`)
+                api.delete(`/providers/${provider.idProveedor}`)
                     .then(() => {
                         loadProviders();
                         Swal.fire('Eliminado', 'El proveedor ha sido eliminado.', 'success');
@@ -54,8 +62,8 @@ const ProviderManager = () => {
     };
 
     const handleSaveProvider = (data) => {
-        const isEditing = !!data.Id_Proveedor;
-        const endpoint = isEditing ? `/providers/${data.Id_Proveedor}` : '/providers';
+        const isEditing = !!data.idProveedor;
+        const endpoint = isEditing ? `/providers/${data.idProveedor}` : '/providers';
         const method = isEditing ? api.put : api.post;
 
         method(endpoint, data)
@@ -85,8 +93,8 @@ const ProviderManager = () => {
 
     const columns = [
         { key: 'nombre', label: 'Nombre' },
-        { key: 'telefono', label: 'Teléfono' },
-        { key: 'contacto', label: 'Contacto' }
+        { key: 'contacto', label: 'Contacto' },
+        { key: 'telefono', label: 'Teléfono' }
     ];
 
     const actions = [
