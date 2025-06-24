@@ -25,10 +25,10 @@ const ClientManager = () => {
 
     const handleEdit = (client) => {
         const mappedClient = {
-            id_cliente: client.ID_CLIENTE,
-            nombre: client.NOMBRE,
-            email: client.EMAIL,
-            telefono: client.TELEFONO
+            id_cliente: client.Id_Cliente,
+            nombre: client.nombre,
+            email: client.email,
+            telefono: client.telefono
         };
         setSelectedClient(mappedClient);
         open();
@@ -60,12 +60,12 @@ const ClientManager = () => {
     };
 
     const handleSaveClient = (data) => {
-        const clientId = data.id_cliente;
-        const endpoint = clientId && clientId !== 0 ? `/clients/${clientId}` : '/clients';
-        const method = clientId && clientId !== 0 ? api.put : api.post;
+        const clientId = selectedClient?.id_cliente;
+        const endpoint = clientId ? `/clients/${clientId}` : '/clients';
+        const method = clientId ? api.put : api.post;
 
         const payload = {
-            Id_Cliente: data.id_cliente,
+            id_cliente: clientId ?? 0,
             nombre: data.nombre,
             email: data.email,
             telefono: data.telefono
@@ -91,6 +91,7 @@ const ClientManager = () => {
                 });
             });
     };
+
 
     useEffect(() => {
         loadClients();
@@ -149,11 +150,16 @@ const ClientManager = () => {
                 title={selectedClient ? 'Editar Cliente' : 'Nuevo Cliente'}
                 size="md"
             >
-                <ClientForm
-                    client={selectedClient}
-                    onCancel={close}
-                    onSubmit={handleSaveClient}
-                />
+                {selectedClient !== null || !isOpen ? (
+                    <ClientForm
+                        client={selectedClient}
+                        onCancel={close}
+                        onSubmit={handleSaveClient}
+                    />
+                ) : (
+                    <div>Cargando...</div>
+                )}
+
             </Modal>
         </div>
     );
