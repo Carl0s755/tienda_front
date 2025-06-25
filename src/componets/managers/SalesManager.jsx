@@ -134,24 +134,6 @@ const SaleManager = () => {
             }))
         };
 
-        if (!mappedData.Id_Cliente) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Cliente requerido',
-                text: 'Debes seleccionar un cliente antes de guardar la venta.'
-            });
-            return;
-        }
-
-        if (!mappedData.detalles.length) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Sin productos',
-                text: 'Agrega al menos un producto a la venta.'
-            });
-            return;
-        }
-
         method(endpoint, mappedData)
             .then(() => {
                 close();
@@ -162,14 +144,14 @@ const SaleManager = () => {
                     showConfirmButton: false,
                     timer: 1500
                 });
-                window.dispatchEvent(new Event('venta-registrada'));
             })
             .catch((err) => {
                 console.error(err);
+                const message = err.response?.data?.message || 'Error desconocido al registrar la venta.';
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'No se pudo guardar la venta.'
+                    text: message
                 });
             });
     };
